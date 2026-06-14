@@ -205,7 +205,7 @@ async function searchJamendo(query: string): Promise<UnifiedTrack[]> {
  * Hardened multi-engine handler: Queries Piped first, then falls back 
  * to Invidious if public Piped nodes fail or return empty results.
  */
-async function searchYoutube(query: string): Promise<UnifiedTrack[]> {
+async function searchYoutube(query: string, protocol: string, host: string): Promise<UnifiedTrack[]> {
   // 1. TACTIC A: Try Piped Instances
   try {
     const response = await fetchFromPipedWithFallback<PipedSearchResponse>(
@@ -216,21 +216,26 @@ async function searchYoutube(query: string): Promise<UnifiedTrack[]> {
     const items = Array.isArray(rawData) ? rawData : (rawData ? (rawData.items || []) : [])
     
     if (items.length > 0) {
-      return items
-        .filter((item: any) => item.type === 'stream' || item.type === 'song' || !item.type)
-        .map((item: any): UnifiedTrack => {
+      const validItems: UnifiedTrack[] = []
+      items.forEach((item: any) => {
+        const duration = Number(item.duration) || 0
+        if (duration > 0 && (item.type === 'stream' || item.type === 'song' || !item.type)) {
           const videoId = extractYoutubeId(item.url || item.id || '')
-          return {
-            id: `yt-${videoId}`,
-            nativeId: videoId,
-            source: 'youtube',
-            title: String(item.title || 'Unknown Title'),
-            artist: String(item.uploaderName || item.artist || 'Unknown Artist'),
-            artworkUrl: item.thumbnail || item.thumbnailUrl ? String(item.thumbnail || item.thumbnailUrl) : null,
-            duration_ms: (Number(item.duration) || 0) * 1000,
-            streamUrl: `/api/tracks/stream/yt/${videoId}`, 
+          if (videoId) {
+            validItems.push({
+              id: `yt-${videoId}`,
+              nativeId: videoId,
+              source: 'youtube',
+              title: String(item.title || 'Unknown Title'),
+              artist: String(item.uploaderName || item.artist || 'Unknown Artist'),
+              artworkUrl: item.thumbnail || item.thumbnailUrl ? String(item.thumbnail || item.thumbnailUrl) : null,
+              duration_ms: duration * 1000,
+              streamUrl: `${protocol}://${host}/api/tracks/stream/yt/${videoId}`, 
+            })
           }
-        })
+        }
+      })
+      if (validItems.length > 0) return validItems
     }
     console.warn('[Tracks Search] Piped resolved but returned an empty list. Dropping to Invidious Fallback.')
   } catch (err) {
@@ -249,19 +254,27 @@ async function searchYoutube(query: string): Promise<UnifiedTrack[]> {
       const invItems = invResponse.data || []
       if (invItems.length === 0) continue
 
-      console.log(`[Tracks Search] Successfully recovered stream catalog using Invidious node: [${invBase}]`)
-      
-      return invItems.map((item: any): UnifiedTrack => ({
-        id: `yt-${item.videoId}`,
-        nativeId: item.videoId,
-        source: 'youtube',
-        title: String(item.title || 'Unknown Title'),
-        artist: String(item.author || 'Unknown Artist'),
-        // Invidious provides structured thumbnail array structures
-        artworkUrl: item.videoThumbnails?.[0]?.url || null,
-        duration_ms: (Number(item.lengthSeconds) || 0) * 1000,
-        streamUrl: `/api/tracks/stream/yt/${item.videoId}`
-      }))
+      const validInvItems: UnifiedTrack[] = []
+      invItems.forEach((item: any) => {
+        const duration = Number(item.lengthSeconds) || 0
+        if (duration > 0) {
+          validInvItems.push({
+            id: `yt-${item.videoId}`,
+            nativeId: item.videoId,
+            source: 'youtube',
+            title: String(item.title || 'Unknown Title'),
+            artist: String(item.author || 'Unknown Artist'),
+            artworkUrl: item.videoThumbnails?.[0]?.url || null,
+            duration_ms: duration * 1000,
+            streamUrl: `${protocol}://${host}/api/tracks/stream/yt/${item.videoId}`
+          })
+        }
+      })
+
+      if (validInvItems.length > 0) {
+        console.log(`[Tracks Search] Successfully recovered stream catalog using Invidious node: [${invBase}]`)
+        return validInvItems
+      }
     } catch (invErr: any) {
       console.warn(`Invidious Node [${invBase}] failed to respond. Rotating...`)
     }
@@ -284,18 +297,19 @@ router.get('/tracks/search', searchRateLimiter, async (req: Request, res: Respon
     return
   }
 
+  const protocol = req.protocol
+  const host = req.get('host') || 'localhost:3001'
+
   // Fire concurrent search queries
   const [jamResult, ytResult] = await Promise.allSettled([
     searchJamendo(query),
-    searchYoutube(query),
+    searchYoutube(query, protocol, host),
   ])
 
   const jamTracks = jamResult.status === 'fulfilled' ? jamResult.value : []
   const ytTracks = ytResult.status === 'fulfilled' ? ytResult.value : []
 
   // Ensure fully-qualified streamUrls for YouTube tracks using current request host
-  const host = req.get('host')
-  const protocol = req.protocol
   const mappedYtTracks = ytTracks.map((t) => ({
     ...t,
     streamUrl: `${protocol}://${host}/api/tracks/stream/yt/${t.nativeId}`,
@@ -393,16 +407,16 @@ router.get('/tracks/:id', apiRateLimiter, async (req: Request, res: Response) =>
  * GET /api/charts
  * Hardened Trending Engine: Extracts real-time global charts.
  * Uses Piped's music feed spec with multi-path Invidious fallback.
+ * Strictly filters out live streams and uses Jamendo as an absolute failsafe.
  */
 router.get('/charts', apiRateLimiter, async (req: Request, res: Response): Promise<void> => {
   const host = req.get('host')
   const protocol = req.protocol
-  const tracks: UnifiedTrack[] = []
+  let tracks: UnifiedTrack[] = []
 
-  // TACTIC A: Query Piped — try updated music feed spec, then standard trending path
+  // TACTIC A: Query Piped — try updated music feed spec
   const PIPED_CHART_PATHS = [
     '/feed/trending?filter=music',  // Spec-specified music feed path
-    '/trending?region=IN',           // Confirmed-working fallback path
   ]
 
   for (const chartPath of PIPED_CHART_PATHS) {
@@ -411,24 +425,28 @@ router.get('/charts', apiRateLimiter, async (req: Request, res: Response): Promi
       const rawItems = Array.isArray(response.data) ? response.data : (response.data?.items || [])
 
       if (rawItems.length > 0) {
-        rawItems.slice(0, 20).forEach((item: any) => {
-          const videoId = extractYoutubeId(item.url || item.id || '')
-          if (videoId) {
-            tracks.push({
-              id: `yt-${videoId}`,
-              nativeId: videoId,
-              source: 'youtube',
-              title: String(item.title || 'Trending Track'),
-              artist: String(item.uploaderName || item.artist || 'Commercial Artist'),
-              artworkUrl: item.thumbnail || item.thumbnailUrl || null,
-              duration_ms: (Number(item.duration) || 0) * 1000,
-              streamUrl: `${protocol}://${host}/api/tracks/stream/yt/${videoId}`
-            })
+        rawItems.slice(0, 40).forEach((item: any) => {
+          const duration = Number(item.duration) || 0
+          // Block live streams and non-music videos
+          if (duration > 0 && item.type !== 'channel') {
+            const videoId = extractYoutubeId(item.url || item.id || '')
+            if (videoId) {
+              tracks.push({
+                id: `yt-${videoId}`,
+                nativeId: videoId,
+                source: 'youtube',
+                title: String(item.title || 'Trending Track'),
+                artist: String(item.uploaderName || item.artist || 'Commercial Artist'),
+                artworkUrl: item.thumbnail || item.thumbnailUrl || null,
+                duration_ms: duration * 1000,
+                streamUrl: `${protocol}://${host}/api/tracks/stream/yt/${videoId}`
+              })
+            }
           }
         })
 
         if (tracks.length > 0) {
-          res.json(tracks)
+          res.json(tracks.slice(0, 20))
           return
         }
       }
@@ -438,32 +456,76 @@ router.get('/charts', apiRateLimiter, async (req: Request, res: Response): Promi
   }
 
   // TACTIC B: Invidious trending fallback (/api/v1/trending?type=music)
-  for (const invBase of INVIDIOUS_INSTANCES) {
+  if (tracks.length === 0) {
+    for (const invBase of INVIDIOUS_INSTANCES) {
+      try {
+        const invResponse = await axios.get(`${invBase}/api/v1/trending`, {
+          params: { type: 'music' },
+          timeout: 3000
+        })
+
+        const invItems = invResponse.data || []
+        if (invItems.length === 0) continue
+
+        invItems.slice(0, 40).forEach((item: any) => {
+          const duration = Number(item.lengthSeconds) || 0
+          // Filter out live streams
+          if (duration > 0) {
+            tracks.push({
+              id: `yt-${item.videoId}`,
+              nativeId: item.videoId,
+              source: 'youtube',
+              title: String(item.title || 'Trending Track'),
+              artist: String(item.author || 'Commercial Artist'),
+              artworkUrl: item.videoThumbnails?.[0]?.url || null,
+              duration_ms: duration * 1000,
+              streamUrl: `${protocol}://${host}/api/tracks/stream/yt/${item.videoId}`
+            })
+          }
+        })
+
+        if (tracks.length > 0) {
+          console.log(`[Charts Engine] Successfully recovered trending view via Invidious mirror: [${invBase}]`)
+          res.json(tracks.slice(0, 20))
+          return
+        }
+      } catch (invErr) {
+        continue
+      }
+    }
+  }
+
+  // TACTIC C: Absolute Safety Valve — Jamendo Popularity Charts
+  // Ensures the frontend NEVER renders an empty list
+  if (tracks.length === 0 && CLIENT_ID) {
     try {
-      const invResponse = await axios.get(`${invBase}/api/v1/trending`, {
-        params: { type: 'music' },
-        timeout: 2000
+      console.log(`[Charts Engine] YouTube scrapers exhausted. Fetching Jamendo weekly popularity...`)
+      const url = jamendoUrl('/tracks/', {
+        limit: '20',
+        order: 'popularity_week',
+        imagesize: '200',
+        audioformat: 'mp32'
       })
-
-      const invItems = invResponse.data || []
-      if (invItems.length === 0) continue
-
-      const invTracks = invItems.slice(0, 20).map((item: any): UnifiedTrack => ({
-        id: `yt-${item.videoId}`,
-        nativeId: item.videoId,
-        source: 'youtube',
-        title: String(item.title || 'Trending Track'),
-        artist: String(item.author || 'Commercial Artist'),
-        artworkUrl: item.videoThumbnails?.[0]?.url || null,
-        duration_ms: (Number(item.lengthSeconds) || 0) * 1000,
-        streamUrl: `${protocol}://${host}/api/tracks/stream/yt/${item.videoId}`
+      const response = await axios.get(url, { timeout: 6000 })
+      const data = response.data as any
+      
+      const jamTracks: UnifiedTrack[] = (data.results || []).map((raw: any) => ({
+        id: `jam-${raw.id}`,
+        nativeId: raw.id,
+        source: 'jamendo',
+        title: String(raw.name || 'Unknown Track'),
+        artist: String(raw.artist_name || 'Unknown Artist'),
+        artworkUrl: raw.image ? String(raw.image) : null,
+        duration_ms: (Number(raw.duration) || 0) * 1000,
+        streamUrl: String(raw.audio || ''),
       }))
 
-      console.log(`[Charts Engine] Successfully recovered trending view via Invidious mirror: [${invBase}]`)
-      res.json(invTracks)
-      return
-    } catch (invErr) {
-      continue
+      if (jamTracks.length > 0) {
+        res.json(jamTracks)
+        return
+      }
+    } catch (jamErr) {
+      console.error(`[Charts Engine] Jamendo fallback also failed!`)
     }
   }
 

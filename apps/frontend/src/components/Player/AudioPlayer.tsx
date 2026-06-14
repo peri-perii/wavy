@@ -4,42 +4,10 @@ import { usePlayer } from '../../hooks/usePlayer'
 import { useJamRoom } from '../../hooks/useJamRoom'
 import ProgressBar from './ProgressBar'
 import VolumeControl from './VolumeControl'
+import { Button } from '../ui/button'
+import { Shuffle, SkipBack, SkipForward, Play, Pause, Repeat, Repeat1, Loader2 } from 'lucide-react'
 
-// ── Icons (inline SVG to avoid extra dependency) ─────────────────────────────
-const PlayIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-    <path d="M8 5v14l11-7z" />
-  </svg>
-)
-const PauseIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-  </svg>
-)
-const SkipNextIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z" />
-  </svg>
-)
-const SkipPrevIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
-  </svg>
-)
-const ShuffleIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-    <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
-  </svg>
-)
-const RepeatIcon = ({ mode }: { mode: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-    {mode === 'one' ? (
-      <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z" />
-    ) : (
-      <path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z" />
-    )}
-  </svg>
-)
+// ── Removed legacy SVG icons as we use lucide-react now ─────────────────────────────
 
 // ── Equalizer (playing indicator) ────────────────────────────────────────────
 const Equalizer = () => (
@@ -146,62 +114,66 @@ export default function AudioPlayer() {
         <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
           {/* Control buttons */}
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={toggleShuffle}
-              className={`btn-icon ${shuffle ? 'text-brand-400' : ''}`}
+              className={`rounded-full h-9 w-9 ${shuffle ? 'text-brand-400' : 'text-muted-foreground hover:text-foreground'}`}
               aria-label="Toggle shuffle"
               disabled={isControlLocked}
             >
-              <ShuffleIcon />
-            </button>
+              <Shuffle className="w-4 h-4" />
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => { playPrev(); setTimeout(emitSync, 50) }}
-              className="btn-icon"
+              className="rounded-full h-9 w-9 text-muted-foreground hover:text-foreground"
               aria-label="Previous track"
               disabled={isControlLocked || !currentTrack}
             >
-              <SkipPrevIcon />
-            </button>
+              <SkipBack className="w-5 h-5 fill-current" />
+            </Button>
 
-            <button
+            <Button
               onClick={handleTogglePlay}
               disabled={!currentTrack}
               aria-label={isPlaying ? 'Pause' : 'Play'}
               className={`
-                w-10 h-10 rounded-full flex items-center justify-center
-                transition-all duration-200 active:scale-90
+                rounded-full h-11 w-11 flex items-center justify-center
+                transition-all duration-200 active:scale-95 shadow-glow-sm
                 ${currentTrack
-                  ? 'bg-brand-600 hover:bg-brand-500 text-white shadow-glow-sm'
-                  : 'bg-surface-raised text-gray-600 cursor-not-allowed'}
-                ${isLoading ? 'opacity-75' : ''}
+                  ? 'bg-brand-600 hover:bg-brand-500 text-white'
+                  : 'bg-surface-raised text-muted-foreground cursor-not-allowed hover:bg-surface-raised'}
               `}
             >
               {isLoading ? (
-                <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-                </svg>
-              ) : isPlaying ? <PauseIcon /> : <PlayIcon />}
-            </button>
+                <Loader2 className="animate-spin w-5 h-5" />
+              ) : isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => { playNext(); setTimeout(emitSync, 50) }}
-              className="btn-icon"
+              className="rounded-full h-9 w-9 text-muted-foreground hover:text-foreground"
               aria-label="Next track"
               disabled={isControlLocked || !currentTrack}
             >
-              <SkipNextIcon />
-            </button>
+              <SkipForward className="w-5 h-5 fill-current" />
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={cycleRepeat}
-              className={`btn-icon ${repeat !== 'none' ? 'text-brand-400' : ''}`}
+              className={`rounded-full h-9 w-9 ${repeat !== 'none' ? 'text-brand-400' : 'text-muted-foreground hover:text-foreground'}`}
               aria-label={`Repeat mode: ${repeat}`}
               disabled={isControlLocked}
             >
-              <RepeatIcon mode={repeat} />
-            </button>
+              {repeat === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+            </Button>
           </div>
 
           {/* Progress bar + timestamps */}

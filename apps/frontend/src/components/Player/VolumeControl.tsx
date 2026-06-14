@@ -1,4 +1,6 @@
 import { usePlayerStore } from '../../store/playerStore'
+import { Slider } from '../ui/slider'
+import { Button } from '../ui/button'
 
 const VolumeHigh = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0">
@@ -22,27 +24,30 @@ export default function VolumeControl() {
   const displayVolume = isMuted ? 0 : volume
 
   return (
-    <div className="flex items-center gap-2" aria-label="Volume control">
-      <button
+    <div className="flex items-center gap-2 w-full" aria-label="Volume control">
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={toggleMute}
-        className="btn-icon"
+        className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full"
         aria-label={isMuted ? 'Unmute' : 'Mute'}
       >
         {isMuted || volume === 0 ? <VolumeMute /> : volume < 0.5 ? <VolumeLow /> : <VolumeHigh />}
-      </button>
+      </Button>
 
-      <input
-        type="range"
-        min={0}
+      <Slider
+        value={[displayVolume]}
         max={1}
         step={0.02}
-        value={displayVolume}
-        onChange={(e) => setVolume(Number(e.target.value))}
-        className="range-input w-20"
+        onValueChange={(vals) => {
+          if (Array.isArray(vals) && vals.length > 0) {
+            setVolume(vals[0])
+          } else if (typeof vals === 'number') {
+            setVolume(vals)
+          }
+        }}
+        className="w-20 cursor-pointer"
         aria-label="Volume slider"
-        aria-valuenow={Math.round(displayVolume * 100)}
-        aria-valuemin={0}
-        aria-valuemax={100}
       />
     </div>
   )

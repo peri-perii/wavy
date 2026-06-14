@@ -3,6 +3,11 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { searchTracks } from '../../api/jamendo'
 import { Track } from '../../store/playerStore'
 import { usePlayerStore } from '../../store/playerStore'
+import { Input } from '../ui/input'
+import { ScrollArea } from '../ui/scroll-area'
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
+import { Card } from '../ui/card'
+import { Search, Loader2 } from 'lucide-react'
 
 interface SearchBarProps {
   onResultClick?: (track: Track) => void
@@ -75,24 +80,15 @@ export default function SearchBar({ onResultClick }: SearchBarProps) {
     <div ref={containerRef} className="relative w-full max-w-xl" onBlur={handleBlur}>
       {/* Input */}
       <div className="relative">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.35-4.35" />
-        </svg>
-
-        <input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        
+        <Input
           id="track-search"
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search artists, tracks, albums…"
-          className="input pl-9 pr-4"
+          className="pl-9 pr-10 bg-background"
           aria-label="Search music"
           aria-autocomplete="list"
           aria-expanded={isOpen}
@@ -100,64 +96,56 @@ export default function SearchBar({ onResultClick }: SearchBarProps) {
         />
 
         {isLoading && (
-          <svg
-            className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin w-4 h-4 text-brand-500"
-            viewBox="0 0 24 24" fill="none"
-          >
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-          </svg>
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
       </div>
 
       {/* Dropdown results */}
       {isOpen && (
-        <div
+        <Card
           role="listbox"
           aria-label="Search results"
-          className="
-            absolute top-full left-0 right-0 mt-2 z-50
-            glass-card rounded-xl overflow-hidden
-            max-h-80 overflow-y-auto
-            animate-fade-in shadow-card
-          "
+          className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden shadow-card"
         >
-          {error ? (
-            <div className="p-4 text-sm text-rose-400 text-center">{error}</div>
-          ) : normalizedResults.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500 text-center">No tracks found</div>
-          ) : (
-            normalizedResults.map((track) => (
-              <button
-                key={track.id}
-                role="option"
-                aria-selected={false}
-                onClick={() => handleSelect(track)}
-                className="w-full flex items-center justify-between p-3 hover:bg-slate-800/80 text-left border-b border-surface-border/50 last:border-0 transition"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    src={track.image || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100'}
-                    alt=""
-                    className="w-10 h-10 rounded object-cover bg-slate-900 flex-shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h5 className="text-slate-100 font-medium text-sm truncate max-w-[280px]">{track.name}</h5>
-                    <p className="text-slate-400 text-xs mt-0.5 flex items-center gap-2 truncate">
-                      {track.artist_name}
-                      {track.source === 'youtube' && (
-                        <span className="bg-red-600/20 text-red-400 px-1 rounded-[2px] text-[9px] font-bold tracking-wider">LIVE</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-slate-500 text-xs flex-shrink-0 ml-2">
-                  {formatDuration(track.duration)}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
+          <ScrollArea className="max-h-80 w-full">
+            {error ? (
+              <div className="p-4 text-sm text-destructive text-center">{error}</div>
+            ) : normalizedResults.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground text-center">No tracks found</div>
+            ) : (
+              <div className="flex flex-col p-1">
+                {normalizedResults.map((track) => (
+                  <button
+                    key={track.id}
+                    role="option"
+                    aria-selected={false}
+                    onClick={() => handleSelect(track)}
+                    className="w-full flex items-center justify-between p-2 hover:bg-accent hover:text-accent-foreground text-left rounded-md transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-10 w-10 rounded">
+                        <AvatarImage src={track.image || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100'} alt={track.name} />
+                        <AvatarFallback className="rounded bg-muted">M</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <h5 className="font-medium text-sm truncate max-w-[280px]">{track.name}</h5>
+                        <p className="text-muted-foreground text-xs mt-0.5 flex items-center gap-2 truncate">
+                          {track.artist_name}
+                          {track.source === 'youtube' && (
+                            <span className="bg-destructive/20 text-destructive px-1 rounded-[2px] text-[9px] font-bold tracking-wider">LIVE</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-muted-foreground text-xs flex-shrink-0 ml-2">
+                      {formatDuration(track.duration)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </Card>
       )}
     </div>
   )
