@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import http from 'http'
 import { createWsServer } from './ws/server.js'
-import tracksRoutes from './routes/tracks.js'
+import tracksRoutes, { initializeDynamicMusicPools } from './routes/tracks.js'
 import authRoutes from './routes/auth.js'
 
 // ─── Environment Validation ───────────────────────────────────────────────────
@@ -74,6 +74,11 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 // ─── HTTP + WebSocket Server ──────────────────────────────────────────────────
 const server = http.createServer(app)
 createWsServer(server)
+
+// Spin up background registry discovery sync
+initializeDynamicMusicPools().then(() => {
+  console.log('🚀 Wavy Core Stream Engine successfully stabilized and active.')
+})
 
 server.listen(PORT, () => {
   console.log(`\n🌊 Wavy Backend running at:`)

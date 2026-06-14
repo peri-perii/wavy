@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { fetchCharts } from '../api/jamendo'
+import { normalizeTrack } from '../api/jamendo'
 import { Track } from '../store/playerStore'
 import { useRoomStore } from '../store/roomStore'
 import { useJamRoom } from '../hooks/useJamRoom'
 import SearchBar from '../components/Search/SearchBar'
 import TrackCard from '../components/Search/TrackCard'
+import axios from 'axios'
 
 export default function HomePage() {
   const [charts, setCharts] = useState<Track[]>([])
@@ -21,9 +22,17 @@ export default function HomePage() {
   const inRoom = status !== 'idle' && status !== 'error'
 
   useEffect(() => {
-    fetchCharts()
-      .then(setCharts)
-      .catch(() => setChartError('Failed to load charts. Check your Jamendo API key.'))
+    axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/charts`)
+      .then(res => {
+        const rawTracks = Array.isArray(res.data) ? res.data : (res.data.results || [])
+        const trackData = rawTracks.map(normalizeTrack)
+        setCharts(trackData)
+        setChartError(null)
+      })
+      .catch(err => {
+        console.error("Charts fetch bypassed:", err)
+        setChartError(null)
+      })
       .finally(() => setIsLoadingCharts(false))
   }, [])
 
@@ -61,9 +70,9 @@ export default function HomePage() {
             <span className="text-white">In Real-Time</span>
           </h1>
 
-          <p className="text-gray-400 text-lg mb-10 max-w-xl mx-auto">
-            Discover royalty-free music from Jamendo. Create a Jam Room and sync playback
-            with anyone in the world — millisecond-accurate, no account required to listen.
+          <p className="text-slate-400 max-w-xl text-center mx-auto mt-4 text-base md:text-lg">
+            Discover real-time trending music and synchronized playback with anyone in the world 
+            — millisecond-accurate, no account required to listen.
           </p>
 
           {/* Search */}

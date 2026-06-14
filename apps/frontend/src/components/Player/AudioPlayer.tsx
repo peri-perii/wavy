@@ -85,7 +85,20 @@ export default function AudioPlayer() {
   return (
     <div className="player-bar">
       {/* Hidden audio element */}
-      <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
+      <audio
+        ref={audioRef}
+        preload="auto"
+        onCanPlay={async () => {
+          if (!audioRef.current) return
+          try {
+            audioRef.current.volume = 0.8
+            await audioRef.current.play()
+            console.log('[Wavy Player] Audio channel successfully established!')
+          } catch (err) {
+            console.warn('[Wavy Player] Autoplay blocked, awaiting initial viewport canvas click interaction:', err)
+          }
+        }}
+      />
 
       <div className="h-full max-w-screen-xl mx-auto px-4 flex items-center gap-4">
 

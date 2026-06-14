@@ -64,6 +64,20 @@ async function apiFetch<T>(path: string): Promise<JamendoResponse<T>> {
   return res.json() as Promise<JamendoResponse<T>>
 }
 
+async function fetchFlatOrWrapped<T>(path: string): Promise<T[]> {
+  const res = await fetch(`${BACKEND}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string }
+    throw new Error(err.message ?? `API error ${res.status}`)
+  }
+
+  const data = await res.json()
+  return Array.isArray(data) ? data : (data.results || [])
+}
+
 /** Normalise a raw Jamendo track or UnifiedTrack into our internal Track shape */
 export function normalizeTrack(raw: any): Track {
   if (raw && raw.source) {
@@ -113,11 +127,11 @@ export async function searchTracks(params: SearchParams): Promise<Track[]> {
   const limit = params.limit ?? 20
   const offset = params.offset ?? 0
 
-  const data = await apiFetch<any>(
+  const rawTracks = await fetchFlatOrWrapped<any>(
     `/api/tracks/search?q=${q}&limit=${limit}&offset=${offset}`
   )
 
-  return data.results.map(normalizeTrack)
+  return rawTracks.map(normalizeTrack)
 }
 
 /**
@@ -132,8 +146,8 @@ export async function fetchTrack(id: string): Promise<Track | null> {
  * Fetch trending chart tracks.
  */
 export async function fetchCharts(): Promise<Track[]> {
-  const data = await apiFetch<any>('/api/charts')
-  return data.results.map(normalizeTrack)
+  const rawTracks = await fetchFlatOrWrapped<any>('/api/charts')
+  return rawTracks.map(normalizeTrack)
 }
 
 /**

@@ -31,7 +31,9 @@ export default function SearchBar({ onResultClick }: SearchBarProps) {
 
     try {
       const tracks = await searchTracks({ q, limit: 10 })
-      setResults(tracks)
+      // Defensive guard: ensure we never store a non-array in results state
+      const safeResults = Array.isArray(tracks) ? tracks : ((tracks as any)?.results || [])
+      setResults(safeResults)
       setIsOpen(true)
     } catch (err) {
       setError('Search failed. Check your connection.')
@@ -63,6 +65,11 @@ export default function SearchBar({ onResultClick }: SearchBarProps) {
     const s = (sec % 60).toString().padStart(2, '0')
     return `${m}:${s}`
   }
+
+  // Defensive normalisation outside JSX — TypeScript can infer Track[] from state type
+  const normalizedResults: Track[] = Array.isArray(results)
+    ? results
+    : ((results as any)?.results ?? [])
 
   return (
     <div ref={containerRef} className="relative w-full max-w-xl" onBlur={handleBlur}>
@@ -117,27 +124,34 @@ export default function SearchBar({ onResultClick }: SearchBarProps) {
         >
           {error ? (
             <div className="p-4 text-sm text-rose-400 text-center">{error}</div>
-          ) : results.length === 0 ? (
+          ) : normalizedResults.length === 0 ? (
             <div className="p-4 text-sm text-gray-500 text-center">No tracks found</div>
           ) : (
-            results.map((track) => (
+            normalizedResults.map((track) => (
               <button
                 key={track.id}
                 role="option"
                 aria-selected={false}
                 onClick={() => handleSelect(track)}
-                className="w-full track-card text-left border-b border-surface-border/50 last:border-0"
+                className="w-full flex items-center justify-between p-3 hover:bg-slate-800/80 text-left border-b border-surface-border/50 last:border-0 transition"
               >
-                <img
-                  src={track.image || '/placeholder-art.png'}
-                  alt=""
-                  className="w-10 h-10 rounded-lg object-cover bg-surface-raised flex-shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">{track.name}</p>
-                  <p className="text-xs text-gray-400 truncate">{track.artist_name}</p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={track.image || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100'}
+                    alt=""
+                    className="w-10 h-10 rounded object-cover bg-slate-900 flex-shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h5 className="text-slate-100 font-medium text-sm truncate max-w-[280px]">{track.name}</h5>
+                    <p className="text-slate-400 text-xs mt-0.5 flex items-center gap-2 truncate">
+                      {track.artist_name}
+                      {track.source === 'youtube' && (
+                        <span className="bg-red-600/20 text-red-400 px-1 rounded-[2px] text-[9px] font-bold tracking-wider">LIVE</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <span className="text-xs text-gray-500 flex-shrink-0">
+                <span className="text-slate-500 text-xs flex-shrink-0 ml-2">
                   {formatDuration(track.duration)}
                 </span>
               </button>
