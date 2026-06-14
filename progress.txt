@@ -1,0 +1,146 @@
+===============================================================
+  OPENWAVE — BUILD PROGRESS TRACKER
+  Last Updated: 2026-06-14
+===============================================================
+
+PROJECT ROOT: d:\downloads\music\openwave\
+
+---------------------------------------------------------------
+  PHASE 0 — DOCUMENTATION & PLANNING
+---------------------------------------------------------------
+[x] PRD.md (v1.1)                            ← DONE
+[x] Implementation Plan (artifact)           ← DONE
+[x] Monorepo directory skeleton created      ← DONE
+    └── apps/frontend/src/  (all subdirs)
+    └── apps/backend/src/   (all subdirs)
+[ ] progress.txt                             ← YOU ARE HERE
+
+---------------------------------------------------------------
+  PHASE 1 — PROJECT CONFIGURATION
+---------------------------------------------------------------
+[ ] package.json (root workspace)
+[ ] apps/frontend/package.json
+[ ] apps/backend/package.json
+[ ] apps/frontend/vite.config.ts
+[ ] apps/frontend/tailwind.config.ts
+[ ] apps/frontend/tsconfig.json
+[ ] apps/frontend/index.html
+[ ] apps/backend/tsconfig.json
+[ ] .env.example (root)
+[ ] apps/frontend/.env.example
+[ ] apps/backend/.env.example
+
+---------------------------------------------------------------
+  PHASE 2 — BACKEND CORE
+---------------------------------------------------------------
+[ ] apps/backend/src/index.ts                 (Express + WS entry)
+[ ] apps/backend/src/lib/supabase.ts          (Supabase client)
+[ ] apps/backend/src/middleware/rateLimiter.ts
+[ ] apps/backend/src/middleware/authMiddleware.ts
+[ ] apps/backend/src/routes/jamendo.ts        (Jamendo proxy)
+[ ] apps/backend/src/routes/auth.ts           (Auth routes)
+
+---------------------------------------------------------------
+  PHASE 3 — WEBSOCKET JAM ROOM ENGINE
+---------------------------------------------------------------
+[ ] apps/backend/src/ws/messageSchema.ts      (Zod schemas)
+[ ] apps/backend/src/ws/roomManager.ts        (Room lifecycle)
+[ ] apps/backend/src/ws/server.ts             (WS handler)
+
+---------------------------------------------------------------
+  PHASE 4 — FRONTEND CORE
+---------------------------------------------------------------
+[ ] apps/frontend/src/main.tsx
+[ ] apps/frontend/src/App.tsx
+[ ] apps/frontend/src/index.css               (Tailwind + global styles)
+
+  State (Zustand)
+  [ ] src/store/playerStore.ts
+  [ ] src/store/roomStore.ts
+  [ ] src/store/chatStore.ts
+
+  API & Lib
+  [ ] src/api/jamendo.ts                      (Typed API client)
+  [ ] src/lib/syncMath.ts                     (Drift calculation)
+  [ ] src/lib/sanitize.ts                     (DOMPurify wrapper)
+
+  Hooks
+  [ ] src/hooks/usePlayer.ts
+  [ ] src/hooks/useJamRoom.ts
+
+---------------------------------------------------------------
+  PHASE 5 — FRONTEND COMPONENTS
+---------------------------------------------------------------
+  Player
+  [ ] src/components/Player/AudioPlayer.tsx
+  [ ] src/components/Player/ProgressBar.tsx
+  [ ] src/components/Player/VolumeControl.tsx
+
+  Search
+  [ ] src/components/Search/SearchBar.tsx     (300ms debounce)
+  [ ] src/components/Search/TrackCard.tsx
+
+  Jam Room
+  [ ] src/components/JamRoom/RoomHeader.tsx
+  [ ] src/components/JamRoom/MemberList.tsx
+
+  Chat
+  [ ] src/components/Chat/ChatPanel.tsx       (XSS sanitized)
+  [ ] src/components/Chat/ChatMessage.tsx
+
+  Queue
+  [ ] src/components/Queue/QueuePanel.tsx
+  [ ] src/components/Queue/QueueItem.tsx      (Vote buttons)
+
+---------------------------------------------------------------
+  PHASE 6 — PAGES
+---------------------------------------------------------------
+  [ ] src/pages/HomePage.tsx                  (Search + Charts)
+  [ ] src/pages/RoomPage.tsx                  (Player + Chat + Queue)
+
+---------------------------------------------------------------
+  PHASE 7 — SECURITY AUDIT (SAST)
+---------------------------------------------------------------
+  [ ] Audit: Environment Leakage check
+  [ ] Audit: Prototype Pollution / JSON.parse validation
+  [ ] Audit: DoS — rate limiter on all proxy routes
+  [ ] Audit: DoS — debounce on search input
+  [ ] Audit: XSS — DOMPurify on all chat renders
+  [ ] Audit: CORS allowlist verification
+  [ ] Audit: HTTP security headers (nosniff, X-Frame-Options)
+  [ ] Self-correction report (list all findings + fixes)
+
+---------------------------------------------------------------
+  PHASE 8 — FINAL VERIFICATION
+---------------------------------------------------------------
+  [ ] npm install (root workspace)
+  [ ] TypeScript compile — frontend (0 errors)
+  [ ] TypeScript compile — backend  (0 errors)
+  [ ] npm run dev  — both apps start concurrently
+  [ ] Manual test: search, play, create room, join room
+  [ ] Manual test: sync drift < 500ms
+  [ ] Manual test: host disconnect grace period
+  [ ] Manual test: queue vote + host accept
+
+===============================================================
+  CREDENTIAL REQUIREMENTS (fill before running)
+===============================================================
+
+  You will need the following keys ready in .env files:
+
+  BACKEND:
+    JAMENDO_CLIENT_ID          → https://devportal.jamendo.com/
+    SUPABASE_URL               → https://app.supabase.com/ > Settings > API
+    SUPABASE_SERVICE_ROLE_KEY  → Supabase > Settings > API (secret!)
+    JWT_SECRET                 → Any long random string (openssl rand -hex 32)
+    CORS_ORIGIN                → http://localhost:5173
+
+  FRONTEND:
+    VITE_BACKEND_URL           → http://localhost:3001
+    VITE_WS_URL                → ws://localhost:3001
+    VITE_SUPABASE_URL          → same as above
+    VITE_SUPABASE_ANON_KEY     → Supabase > Settings > API (anon/public key)
+
+===============================================================
+  LEGEND:  [x] Done  [/] In Progress  [ ] Pending
+===============================================================
