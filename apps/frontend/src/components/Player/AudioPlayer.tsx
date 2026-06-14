@@ -106,15 +106,15 @@ export default function AudioPlayer() {
                 )}
               </div>
               <div className="min-w-0">
+                <p className="text-sm font-medium text-white truncate">{currentTrack.name}</p>
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{currentTrack.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{currentTrack.artist_name}</p>
                   {currentTrack.source === 'youtube' && (
-                    <span className="flex-shrink-0 text-[9px] font-bold tracking-wider text-rose-400 bg-rose-950/50 border border-rose-900/50 px-1.5 py-0.5 rounded uppercase font-mono">
-                      YT-Stream
+                    <span className="flex-shrink-0 text-[8px] font-bold tracking-wider text-rose-400/80 bg-rose-950/40 border border-rose-900/30 px-1.5 py-0.2 rounded font-mono uppercase">
+                      EXTRACTOR // AUDIO
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-400 truncate">{currentTrack.artist_name}</p>
               </div>
             </>
           ) : (
