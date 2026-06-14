@@ -5,7 +5,6 @@ import { useRoomStore } from '../store/roomStore'
 import { useJamRoom } from '../hooks/useJamRoom'
 import SearchBar from '../components/Search/SearchBar'
 import TrackCard from '../components/Search/TrackCard'
-import axios from 'axios'
 
 export default function HomePage() {
   const [charts, setCharts] = useState<Track[]>([])
@@ -22,14 +21,18 @@ export default function HomePage() {
   const inRoom = status !== 'idle' && status !== 'error'
 
   useEffect(() => {
-    axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/charts`)
+    fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'}/api/charts`)
       .then(res => {
-        const rawTracks = Array.isArray(res.data) ? res.data : (res.data.results || [])
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.json();
+      })
+      .then(data => {
+        const rawTracks = Array.isArray(data) ? data : (data.results || [])
         const trackData = rawTracks.map(normalizeTrack)
         setCharts(trackData)
         setChartError(null)
       })
-      .catch(err => {
+      .catch((err: Error) => {
         console.error("Charts fetch bypassed:", err)
         setChartError(null)
       })
