@@ -5,7 +5,7 @@ import { create } from 'zustand'
 export interface UnifiedTrack {
   id: string          // E.g., "yt-vId_12345"
   nativeId: string    // The raw YouTube Video ID
-  source: 'jamendo' | 'soundcloud' | 'youtube'
+  source: 'jamendo' | 'youtube'
   title: string
   artist: string
   artworkUrl: string | null
@@ -26,7 +26,7 @@ export interface Track {
   audio: string           // streaming URL (mp32)
   shareurl?: string
   license_ccurl?: string
-  source?: 'jamendo' | 'soundcloud' | 'youtube'
+  source?: 'jamendo' | 'youtube'
   nativeId?: string
 }
 
